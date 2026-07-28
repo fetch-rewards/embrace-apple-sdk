@@ -15,6 +15,4 @@ class MockURLSessionTaskHandlerDataSource: URLSessionTaskHandlerDataSource {
     var injectTracingHeader = false
     var requestsDataSource: URLSessionRequestsDataSource?
     var ignoredURLs: [String] = []
-
-    var ignoredTaskTypes: [AnyClass] = []
 }

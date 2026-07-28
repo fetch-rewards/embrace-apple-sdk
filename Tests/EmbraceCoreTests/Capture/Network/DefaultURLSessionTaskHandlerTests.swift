@@ -15,7 +15,7 @@ import XCTest
 
 class DefaultURLSessionTaskHandlerTests: XCTestCase {
     private var sut: DefaultURLSessionTaskHandler!
-    private var task: URLSessionDataTask!
+    private var task: URLSessionTask!
     private var session: URLSession!
     private var dataSource: MockURLSessionTaskHandlerDataSource!
     private var networkPayloadCapture: SpyNetworkPayloadCaptureHandler!
@@ -211,12 +211,32 @@ class DefaultURLSessionTaskHandlerTests: XCTestCase {
         thenHTTPNetworkSpanShouldBeCreated()
     }
 
-    func testIgnoredTaskTypes() {
+    func testUnsupportedTaskTypes() {
         givenTaskHandler()
-        givenIgnoredTaskTypes()
-        givenAnURLSessionTask(urlString: "https://ThisIsAUrl/with/some/path")
+        givenAnUnsupportedURLSessionTask()
         whenInvokingCreate(withoutWaiting: true)
         thenNoSpanShouldBeCreated()
+    }
+
+    func testUnsupportedTaskTypes_doesntReadOriginalRequest() {
+        givenTaskHandler()
+        givenUnsupportedSessionTask()
+        whenInvokingCreate(withoutWaiting: true)
+        thenNoSpanShouldBeCreated()
+    }
+
+    func testSupportedDownloadTaskTypes() {
+        givenTaskHandler()
+        givenAURLSessionDownloadTask()
+        whenInvokingCreate()
+        thenHTTPNetworkSpanShouldBeCreated()
+    }
+
+    func testSupportedUploadTaskTypes() {
+        givenTaskHandler()
+        givenAURLSessionUploadTask()
+        whenInvokingCreate()
+        thenHTTPNetworkSpanShouldBeCreated()
     }
 
     // MARK: - AddData Tests
@@ -287,8 +307,20 @@ extension DefaultURLSessionTaskHandlerTests {
         dataSource.ignoredURLs = ["embrace.io"]
     }
 
-    fileprivate func givenIgnoredTaskTypes() {
-        dataSource.ignoredTaskTypes = [URLSessionTask.self]
+    fileprivate func givenAnUnsupportedURLSessionTask() {
+        task = session.streamTask(withHostName: "embrace.io", port: 443)
+    }
+
+    fileprivate func givenUnsupportedSessionTask() {
+        task = UnsupportedSessionTask()
+    }
+
+    fileprivate func givenAURLSessionDownloadTask() {
+        task = session.downloadTask(with: URLRequest(url: URL(string: "https://embrace.io")!))
+    }
+
+    fileprivate func givenAURLSessionUploadTask() {
+        task = session.uploadTask(with: URLRequest(url: URL(string: "https://embrace.io")!), from: Data())
     }
 
     fileprivate func givenHandlerCreatedASpan(withResponse response: URLResponse? = nil) {
@@ -318,7 +350,7 @@ extension DefaultURLSessionTaskHandlerTests {
     }
 
     fileprivate func whenInvokingAddData(_ data: Data = Data()) {
-        sut.addData(data, dataTask: task)
+        sut.addData(data, dataTask: task as! URLSessionDataTask)
     }
 
     fileprivate func whenInvokingFinish(withData data: Data? = nil, error: Error? = nil, withoutWaiting: Bool = false) {
@@ -547,6 +579,13 @@ extension DefaultURLSessionTaskHandlerTests {
         } catch let exception {
             XCTFail("Couldn't get span: \(exception.localizedDescription)")
         }
+    }
+}
+
+private final class UnsupportedSessionTask: URLSessionTask, @unchecked Sendable {
+    override var originalRequest: URLRequest? {
+        XCTFail("originalRequest should not be read for unsupported task types")
+        return nil
     }
 }
 
