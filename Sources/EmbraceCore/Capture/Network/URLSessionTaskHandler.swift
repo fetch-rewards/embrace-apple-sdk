@@ -25,8 +25,6 @@ protocol URLSessionTaskHandlerDataSource: AnyObject {
     var isNSFEligible: Bool { get }
     var requestsDataSource: URLSessionRequestsDataSource? { get }
     var ignoredURLs: [String] { get }
-
-    var ignoredTaskTypes: [AnyClass] { get }
 }
 
 final class DefaultURLSessionTaskHandler: NSObject, URLSessionTaskHandler {
@@ -50,11 +48,7 @@ final class DefaultURLSessionTaskHandler: NSObject, URLSessionTaskHandler {
     }
 
     func shouldIgnoreTask(_ task: URLSessionTask) -> Bool {
-        if let dataSource {
-            return dataSource.ignoredTaskTypes.contains(where: { task.isKind(of: $0) })
-        }
-
-        return false
+        !task.isSupportedTaskType
     }
 
     @discardableResult
@@ -302,6 +296,17 @@ final class DefaultURLSessionTaskHandler: NSObject, URLSessionTaskHandler {
         }
 
         return true
+    }
+}
+
+private extension URLSessionTask {
+    /// AVAssetDownloadTask manages HLS asset structures internally rather than behaving
+    /// like a standard data or download task, so properties like originalRequest are invalid.
+    /// This affects apps using AVAssetDownloadURLSession for offline HLS playback.
+    var isSupportedTaskType: Bool {
+        self is URLSessionDataTask
+            || self is URLSessionDownloadTask
+            || self is URLSessionUploadTask
     }
 }
 

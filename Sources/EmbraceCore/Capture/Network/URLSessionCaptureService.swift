@@ -112,16 +112,6 @@ public final class URLSessionCaptureService: CaptureService, URLSessionTaskHandl
         return options.ignoredURLs
     }
 
-    static private let avTaskTypes: [AnyClass] = [
-        "__NSCFBackgroundAVAggregateAssetDownloadTask",
-        "__NSCFBackgroundAVAssetDownloadTask",
-        "__NSCFBackgroundAVAggregateAssetDownloadTaskNoChildTask"
-    ].compactMap { NSClassFromString($0) }
-
-    var ignoredTaskTypes: [AnyClass] {
-        return Self.avTaskTypes
-    }
-
     var serviceState: CaptureServiceState {
         state.load()
     }
